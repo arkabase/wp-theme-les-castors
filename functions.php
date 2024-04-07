@@ -5,7 +5,7 @@ define('CASTORS_THEME_VERSION', '0.0.1');
 define('CASTORS_THEME_DIR', trailingslashit(get_stylesheet_directory()));
 define('CASTORS_THEME_URI', trailingslashit(esc_url(get_stylesheet_directory_uri())));
 
-require_once('lib/php-jwt/src/JWT.php');
+require_once('external/php-jwt/src/JWT.php');
 use Firebase\JWT\JWT;
 
 function castors_enqueue_scripts() {
