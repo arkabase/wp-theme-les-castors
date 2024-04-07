@@ -1,0 +1,16 @@
+/*
+Theme Name: Les Castors
+Description: Theme enfant du theme Astra.
+Author: Marc Delpont
+Author URI: https://arkabase.fr
+Template: astra
+Version: 0.0.1
+Text Domain: castors
+Domain Path: /languages
+*/
+
+iconify-icon {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+}
