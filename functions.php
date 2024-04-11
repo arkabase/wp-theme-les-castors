@@ -9,10 +9,10 @@ require_once('external/php-jwt/src/JWT.php');
 use Firebase\JWT\JWT;
 
 function castors_enqueue_scripts() {
-	wp_enqueue_style('castors-style', CASTORS_THEME_URI . 'style.css');
+    wp_enqueue_style('castors-style', CASTORS_THEME_URI . 'style.css');
     wp_enqueue_style('iconify', 'https://code.iconify.design/iconify-icon/2.0.0/iconify-icon.min.js');
 }
- add_action( 'wp_enqueue_scripts', 'castors_enqueue_scripts');
+add_action( 'wp_enqueue_scripts', 'castors_enqueue_scripts');
 
 function castors_admin_section_desc($args) {
     echo '<p>' . __("Ce secret doit être le même que celui enregistré dans la configuration du forum, afin que les utilisateurs puissent y accéder sans avoir à s'authentifier à nouveau.", 'castors') . '</div>';
@@ -85,3 +85,72 @@ function castors_logout($action, $result)
     }
 }
 add_action('check_admin_referer', 'castors_logout', 10, 2);
+
+function castors_edit_user_profile_fields($user) {
+    $title = __("Informations complémentaires", 'castors');
+    $label_location = __("Localisation", 'castors');
+    $label_member_num = __("N° d'adhérent", 'castors');
+    $location = esc_attr($user->castors_location);
+    $member_num = esc_attr($user->castors_member_num);
+    $readOnly = IS_PROFILE_PAGE ? ' readOnly' : '';
+
+    echo <<<EOF
+        <h2>{$title }</h2>
+        <table class="form-table" role="presentation">
+            <tbody>
+                <tr class="user-location-wrap">
+                    <th><label for="location">{$label_location}</label></th>
+                    <td><input type="text" name="location" id="location" value="{$location}" class="regular-text code" />
+                    <input type="hidden" name="location-coordinates" id="location-coordinates" value="" />
+                    <p class="description">Entrer le code postal pour choisir la ville</p></td>
+                </tr>
+                <tr class="user-member_num-wrap">
+                    <th><label for="member_num">{$label_member_num}</label></th>
+                    <td><input type="text" name="member_num" id="member_num" value="{$member_num}" class="regular-text code"{$readOnly} /></td>
+                </tr>
+            </tbody>
+        </table>
+    EOF;
+    _LocationAutocompleteScript('.user-location-wrap #location', '.user-location-wrap #location-coordinates');
+}
+add_action('edit_user_profile', 'castors_edit_user_profile_fields', 1);
+
+function _LocationAutocompleteScript($fieldSelector, $locationSelector) {
+    echo <<<EOF
+        <script type="text/javascript">
+            jQuery($ => {
+                $('{$fieldSelector}').autocomplete({
+                    minLength: 5,
+                    source: async function (query, done) {
+                        try {
+                            const response = await fetch('https://geo.api.gouv.fr/communes?codePostal=' + query.term + '&format=geojson&geometry=mairie')
+                            const data = await response.json()
+                            done(data.features.map(f => ({
+                                value: query.term + ', ' + f.properties.nom,
+                                code: f.properties.code,
+                                coordinates: f.geometry.coordinates,
+                            })))
+                        } catch(err) {
+                            console.log('error', err)
+                            done([])
+                        }
+                    },
+                    search: e => {
+                        if (!e.target.value.match(/[0-9]{5}/g)) {
+                            e.preventDefault()
+                        }
+                    },
+                    select: (event, ui) => {
+                        const selected = ui.item
+                        $('{$locationSelector}').val(JSON.stringify(selected))
+                    },
+                });
+            });
+        </script>
+    EOF;
+}
+
+function castors_application_passwords($available, $user) {
+    return $user->has_cap('administrator');
+}
+add_filter('wp_is_application_passwords_available_for_user', 'castors_application_passwords', 10, 2);
