@@ -14,3 +14,24 @@ iconify-icon {
     width: 1em;
     height: 1em;
 }
+
+.ui-widget {
+    font-family: 'Roboto', sans-serif !important;
+    font-size: 1rem !important;
+}
+
+.main-navigation .menu-item > .menu-link i._mi {
+    color: var(--ast-global-color-0);
+    margin-top: 0;
+}
+
+#ast-hf-mobile-menu .menu-item > .menu-link i._mi {
+    width: 35px !important;
+    text-align: center;
+}
+
+.ast-site-header-cart .ast-addon-cart-wrap i.astra-icon:after {
+    color: var(--ast-global-color-5) !important;
+    background-color: var(--ast-global-color-3) !important;
+    font-size: 12px !important;
+}
