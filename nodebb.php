@@ -1,9 +1,11 @@
 <?php
 if (!defined('ABSPATH') || !defined('CASTORS_THEME_VERSION'))  exit;
 
+define('NODEBB_API_USER_ID', 1);
+
 class Castor_NodeBB {
     public static function formatEndpoint($endpoint) {
-        return sprintf('%s?ts=%d', $endpoint, current_time('timestamp'));
+        return sprintf('%s?ts=%d&_uid=%d', $endpoint, current_time('timestamp'), NODEBB_API_USER_ID);
     }
 
     public static function parseArgs($args) {
@@ -53,17 +55,26 @@ class Castor_NodeBB {
         return json_decode($response['body']);
     }
 
+    public static function delete($endpoint, $args = []) {
+        $args['method'] = 'DELETE';
+        $response = wp_remote_request(static::formatEndpoint($endpoint), static::parseArgs($args));
+        if (is_wp_error($response)) {
+            return $response;
+        }
+        return null;
+    }
+
     public static function getAccountById($id) {
-        return static::read(get_site_url() . "/le-forum/api/v3/users/{$id}");
+        return static::read(get_site_url() . "/forum/api/v3/users/{$id}");
     }
 
     public static function getAccountByUsername($username) {
-        return static::read(get_site_url() . "/le-forum/api/user/username/{$username}");
+        return static::read(get_site_url() . "/forum/api/user/{$username}");
     }
 
     public static function updateEmail($user, $nodeBBUser) {
         if ($user->user_email !== $nodeBBUser->email) {
-            $result = static::create(get_site_url() . "/le-forum/api/v3/users/{$nodeBBUser->uid}/emails", ["email" => $user->user_email, "skipConfirmation" => 1]);
+            $result = static::create(get_site_url() . "/forum/api/v3/users/{$nodeBBUser->uid}/emails", ["email" => $user->user_email, "skipConfirmation" => 1]);
             return $result;
         }
         return null;
@@ -74,7 +85,7 @@ class Castor_NodeBB {
             'username' => $user->user_login,
             'fullname' => $user->display_name,
         ];
-        return static::create(get_site_url() . "/le-forum/api/v3/users", $data);
+        return static::create(get_site_url() . "/forum/api/v3/users", $data);
     }
 
     public static function updateAccount($user, $createIfNotExist = true) {
@@ -94,45 +105,54 @@ class Castor_NodeBB {
         if (!$nodeBBUser && $createIfNotExist) {
             $nodeBBUser = static::createAccount($user);
         }
-            
+
         if (!$nodeBBUser) {
             return null;
         }
 
         static::updateEmail($user, $nodeBBUser);
-        return static::update(get_site_url() . "/le-forum/api/v3/users/{$nodeBBUser->uid}", $data);
+        return static::update(get_site_url() . "/forum/api/v3/users/{$nodeBBUser->uid}", $data);
+    }
+
+    public static function getGroups() {
+        return static::read(get_site_url() . "/forum/api/v3/groups");
     }
 
     public static function updateGroups($user) {
         if (!class_exists('Groups_User')) {
+            // Groups extension is not active
             return null;
         }
-        $user = new Groups_User($user->ID);
-        var_dump($user->groups);exit;
+
         $nodeBBUser = static::getAccountByUsername($user->user_login);
-        $location = $user->castors_location_details ? json_decode(htmlspecialchars_decode($user->castors_location_details)) : null;
-        $data = [
-            'fullname' => $user->display_name,
-            'website' => $user->user_url ?: '',
-            'coordinates' => $location ? $location->coordinates : '',
-            'location' => $location ? $location->value : '',
-            'aboutme' => $user->description ?: '',
-        ];
-        if ($location) {
-            $data['fullname'] .= " ({$location->department})";
-        }
+        $groupsUser = new Groups_User($user->ID);
+        $nodeBBgroups = static::getGroups()->response->groups;
+        $nodeBBgroupNames = array_column($nodeBBgroups, 'name');
+        $groupNames = [];
 
-        if ($nodeBBUser) {
-            static::updateEmail($user, $nodeBBUser);
-            return static::update(get_site_url() . "/le-forum/api/v3/users/{$nodeBBUser->uid}", $data);
-        }
+        foreach ($groupsUser->groups as $group) {
+            $groupNames[] = $group->group->name;
 
-        if ($createIfNotExist) {
-            $data['username'] = $user->user_login;
-            $data['email'] = $user->user_email;
-            return static::create(get_site_url() . "/le-forum/api/v3/users", $data);
-        }
+            if (in_array($group->group->name, $nodeBBUser->groupTitleArray)) {
+                // Already in NodeBB group
+                continue;
+            }
 
-        return null;
+            $index = array_search($group->group->name, $nodeBBgroupNames);
+            if ($index === false) {
+                // Not a NodeBB group
+            }
+
+            // Add user to NodeBB group
+            $slug = $nodeBBgroups[$index]->slug;
+            static::update(get_site_url() . "/forum/api/v3/groups/{$slug}/membership/{$nodeBBUser->uid}", []);
+        }
+        
+        foreach ($nodeBBUser->groups as $group) {
+            if (!in_array($group->name, $groupNames)) {
+                // User no longer in group
+                static::delete(get_site_url() . "/forum/api/v3/groups/{$group->slug}/membership/{$nodeBBUser->uid}");
+            }
+        }
     }
 }

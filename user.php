@@ -7,17 +7,12 @@ require_once('external/php-jwt/src/JWT.php');
 use Firebase\JWT\JWT;
 
 class Castor_User {
-    public static function enqueue_scripts() {
-        wp_enqueue_script('jquery-ui-autocomplete');
-        wp_enqueue_style('jquery-ui-style', WC()->plugin_url() . '/assets/css/jquery-ui/jquery-ui.min.css');
-    }
-    
     public static function init() {
         add_action('wp_login', 'Castor_User::login', 10, 2);
         add_action('wp_logout', 'Castor_User::logout');
 
         add_rewrite_endpoint('mon-adhesion', EP_PAGES);
-        add_action('woocommerce_account_mon-adhesion_endpoint', 'Castor_User::account_adhesion_endpoint'); 
+        add_action('woocommerce_account_mon-adhesion_endpoint', 'Castor_User::account_adhesion_endpoint');
         add_filter('woocommerce_account_menu_items', 'Castor_User::account_menu_items', 40);
         add_filter('woocommerce_registration_redirect', 'Castor_User::registration_redirect');
         add_action('woocommerce_edit_account_form_fields', 'Castor_User::edit_account');
@@ -28,30 +23,21 @@ class Castor_User {
     public static function admin_init() {
         add_action('edit_user_profile', 'Castor_User::edit_profile', 1);
         add_action('show_user_profile', 'Castor_User::edit_profile', 1);
+        add_action('user_new_form', 'Castor_User::edit_profile', 1);
         add_filter('wp_is_application_passwords_available_for_user', 'Castor_User::application_passwords', 10, 2);
         add_action('user_profile_update_errors', 'Castor_User::profile_update', 10, 3);
+        add_filter('groups_admin_groups_add_form_after_fields', 'Castor_User::add_group');
+        add_filter('groups_admin_groups_edit_form_after_fields', 'Castor_User::edit_group');
     }
 
     public static function login($user_login, $user) {
         $expiration = time() + 14 * DAY_IN_SECONDS;
         $payload = ['id' => $user->ID, 'username' => $user->user_login];
-        /*
-        $groups_user = new Groups_User($user->ID);
-        $groups = [];
-        foreach ($groups_user->groups as $group) {
-            if ($group->group->name !== 'Registered') {
-                $groups[] = $group->group->name;
-            }
-        }
-        if (count($groups)) {
-            $payload['groups'] = $groups;
-        }
-        */
         $secret = get_option('castors_nbb_secret');
         $jwt = JWT::encode($payload, $secret, 'HS256');
         setcookie('wp_nbb_login', $jwt, $expiration, '/', 'les-castors.fr', true, true);
     }
-    
+
     public static function logout($user_id)
     {
         setcookie('wp_nbb_login', '', time() - 3600, '/', 'les-castors.fr', true);
@@ -63,7 +49,7 @@ class Castor_User {
         $required = __("(required)");
         $label_member_num = __("N° d'adhérent", 'castors');
         $member_num = esc_attr($user->castors_member_num);
-        $readOnly = IS_PROFILE_PAGE ? ' readOnly' : '';
+        $readOnly = defined('IS_PROFILE_PAGE') ? ' readOnly' : '';
         $location_details = $user->castors_location_details;
         $location = json_decode(htmlspecialchars_decode($location_details));
         $location_label = $location ? $location->value : '';
@@ -127,46 +113,9 @@ class Castor_User {
     public static function account_adhesion_endpoint() {
         wc_get_template('myaccount/mon-adhesion.php', array('user' => get_user_by('id', get_current_user_id())));
     }
-    
+
     public static function locationAutocompleteScript() {
-        echo <<<EOF
-            <script type="text/javascript">
-                jQuery($ => {
-                    $('.user-location-wrap #location').autocomplete({
-                        source: async function (query, done) {
-                            try {
-                                const postcode = query.term.substring(0, 5)
-                                const response = await fetch('https://geo.api.gouv.fr/communes?codePostal=' + postcode + '&format=geojson&geometry=mairie')
-                                const data = await response.json()
-                                if (!data?.features?.length) {
-                                    throw new Error("Not a valid postcode")
-                                }
-                                done(data.features.map(f => ({
-                                    value: postcode + ', ' + f.properties.nom,
-                                    postcode,
-                                    code: f.properties.code,
-                                    department: f.properties.codeDepartement,
-                                    coordinates: f.geometry.coordinates,
-                                })))
-                            } catch(err) {
-                                console.log('error', err)
-                                done([])
-                            }
-                        },
-                        search: e => {
-                            $('.user-location-wrap #location-details').val('')
-                            if (!e.target.value.match(/^[0-9]{5}/g)) {
-                                e.preventDefault()
-                            }
-                        },
-                        select: (event, ui) => {
-                            const selected = ui.item
-                            $('.user-location-wrap #location-details').val(JSON.stringify(selected))
-                        },
-                    });
-                });
-            </script>
-        EOF;
+        wp_enqueue_script('castors-location', CASTORS_THEME_URI . 'js/location.js', ['jquery-ui-autocomplete'], false, ['strategy' =>'defer', 'in_footer' => true]);
     }
 
     public static function application_passwords($available, $user) {
@@ -179,7 +128,7 @@ class Castor_User {
         if ($errors->get_error_messages()) {
             return;
         }
-        
+
         $current_user = wp_get_current_user();
         if ($current_user->ID !== $user->ID) {
             $member_num = !empty($_POST['member_num']) ? wc_clean(wp_unslash($_POST['member_num'])) : '';
@@ -192,11 +141,11 @@ class Castor_User {
         if (!$location) {
             $errors->add('castors_location_invalid', __("La localisation n'est pas valide, merci d'entrer un code postal pour sélectionner la ville.", 'castors'));
         }
-    
+
         if ($errors->get_error_messages()) {
             return;
         }
-    
+
         update_user_meta($user->ID, 'castors_location_details', $location);
     }
 
@@ -204,5 +153,19 @@ class Castor_User {
         $user = get_user_by('id', $id);
         Castor_NodeBB::updateAccount($user);
         Castor_NodeBB::updateGroups($user);
+    }
+
+    public static function add_group($output) {
+        $output .= '<p class="description beware">';
+        $output .= esc_html__("ATTENTION : pensez à créer un groupe avec le même nom sur le forum NodeBB avant d'ajouter des membres aun nouveau groupe.", 'castors');
+        $output .= '</p>';
+        return $output;
+    }
+
+    public static function edit_group($output) {
+        $output .= '<p class="description beware">';
+        $output .= esc_html__("ATTENTION : Si un groupe avec le même nom existe sur le forum NodeBB, pensez à le mettre à jour également.", 'castors');
+        $output .= '</p>';
+        return $output;
     }
 }
