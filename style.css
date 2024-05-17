@@ -15,6 +15,13 @@ iconify-icon {
     height: 1em;
 }
 
+.beware {
+    color: red !important;
+    font-weight: bold;
+    margin-top: 2em !important;
+    margin-bottom: 2em !important;
+}
+
 .ui-widget {
     font-family: 'Roboto', sans-serif !important;
     font-size: 1rem !important;

@@ -8,16 +8,25 @@ define('CASTORS_THEME_URI', trailingslashit(esc_url(get_stylesheet_directory_uri
 require_once('utils.php');
 require_once('user.php');
 
-function castors_enqueue_scripts() {
-    wp_enqueue_style('castors-style', CASTORS_THEME_URI . 'style.css');
+function castors_global_enqueue_scripts() {
     wp_enqueue_style('iconify', 'https://code.iconify.design/iconify-icon/2.0.0/iconify-icon.min.js');
-    Castor_User::enqueue_scripts();
+    wp_enqueue_style('jquery-ui-style', WC()->plugin_url() . '/assets/css/jquery-ui/jquery-ui.min.css');
+    wp_enqueue_style('castors-style', CASTORS_THEME_URI . 'style.css');
 }
-add_action( 'wp_enqueue_scripts', 'castors_enqueue_scripts');
+
+function castors_enqueue_scripts() {
+    castors_global_enqueue_scripts();
+}
+add_action('wp_enqueue_scripts', 'castors_enqueue_scripts');
+
+function castors_admin_enqueue_scripts() {
+    castors_global_enqueue_scripts();
+}
+add_action('admin_enqueue_scripts', 'castors_admin_enqueue_scripts');
 
 function castors_admin_section_desc($args) {
     echo '<p>' . __("<b>JWT Secret</b> doit être le même que celui enregistré dans le plugin <b>Session Sharing</b> du forum.", 'castors') . '</p>'
-    . '<p>' . __("<b>Jeton API</b> doit être déclaré en tant que jeton maître dans la section <b>Gestion API</b> de l'administration du forum.", 'castors') . '</p>';
+    . '<p>' . __("<b>Jeton API</b> doit être déclaré dans la section <b>Gestion API</b> de l'administration du forum, associé à un compte administrateur.", 'castors') . '</p>';
 }
 
 function castors_admin_secret() {
@@ -36,7 +45,7 @@ add_action('init', 'castors_init');
 function castors_admin_init() {
     add_settings_section(
         'castors-nbb-section',
-        __("Authentification sur le forum", 'castors'),
+        __("Authentification sur le forum NodeBB", 'castors'),
         'castors_admin_section_desc',
         'general'
     );
