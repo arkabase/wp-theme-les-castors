@@ -42,3 +42,12 @@ iconify-icon {
     background-color: var(--ast-global-color-3) !important;
     font-size: 12px !important;
 }
+
+#castors-map {
+    height: 750px;
+    width: 750px;
+}
+
+#castors-map a {
+    text-decoration: none;
+}
