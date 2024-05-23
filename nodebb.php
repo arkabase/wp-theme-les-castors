@@ -88,13 +88,11 @@ class Castor_NodeBB {
         return static::create(get_site_url() . "/forum/api/v3/users", $data);
     }
 
-    public static function updateAccount($user, $createIfNotExist = true) {
+    public static function updateAccount($user, $location) {
         $nodeBBUser = static::getAccountByUsername($user->user_login);
-        $location = $user->castors_location_details ? json_decode(htmlspecialchars_decode($user->castors_location_details)) : null;
         $data = [
             'fullname' => $user->display_name,
             'website' => $user->user_url ?: '',
-            'coordinates' => $location ? $location->coordinates : '',
             'location' => $location ? $location->value : '',
             'aboutme' => $user->description ?: '',
         ];
@@ -102,7 +100,7 @@ class Castor_NodeBB {
             $data['fullname'] .= " ({$location->department})";
         }
 
-        if (!$nodeBBUser && $createIfNotExist) {
+        if (!$nodeBBUser) {
             $nodeBBUser = static::createAccount($user);
         }
 

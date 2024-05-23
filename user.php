@@ -7,27 +7,35 @@ require_once('external/php-jwt/src/JWT.php');
 use Firebase\JWT\JWT;
 
 class Castor_User {
+    public static function activate() {
+    }
+
+    public static function enqueue_scripts() {
+    }
+
     public static function init() {
-        add_action('wp_login', 'Castor_User::login', 10, 2);
-        add_action('wp_logout', 'Castor_User::logout');
+        add_action('wp_login', [__CLASS__, 'login'], 10, 2);
+        add_action('wp_logout', [__CLASS__, 'logout']);
 
         add_rewrite_endpoint('mon-adhesion', EP_PAGES);
-        add_action('woocommerce_account_mon-adhesion_endpoint', 'Castor_User::account_adhesion_endpoint');
-        add_filter('woocommerce_account_menu_items', 'Castor_User::account_menu_items', 40);
-        add_filter('woocommerce_registration_redirect', 'Castor_User::registration_redirect');
-        add_action('woocommerce_edit_account_form_fields', 'Castor_User::edit_account');
-        add_action('woocommerce_save_account_details_errors', 'Castor_User::save_account_details', 10, 2);
-        add_action('wp_update_user', 'Castor_User::user_updated');
+        add_action('woocommerce_account_mon-adhesion_endpoint', [__CLASS__, 'account_adhesion_endpoint']);
+        add_filter('woocommerce_account_menu_items', [__CLASS__, 'account_menu_items'], 40);
+        add_filter('woocommerce_registration_redirect', [__CLASS__, 'registration_redirect']);
+        add_action('woocommerce_edit_account_form_fields', [__CLASS__, 'edit_account']);
+        add_action('woocommerce_save_account_details_errors', [__CLASS__, 'save_account_details']);
+        add_filter('pre_user_login', [__CLASS__, 'sanitize_username']);
+        add_action('user_register', [__CLASS__, 'profile_saved']);
+        add_action('profile_update', [__CLASS__, 'profile_saved']);
     }
 
     public static function admin_init() {
-        add_action('edit_user_profile', 'Castor_User::edit_profile', 1);
-        add_action('show_user_profile', 'Castor_User::edit_profile', 1);
-        add_action('user_new_form', 'Castor_User::edit_profile', 1);
-        add_filter('wp_is_application_passwords_available_for_user', 'Castor_User::application_passwords', 10, 2);
-        add_action('user_profile_update_errors', 'Castor_User::profile_update', 10, 3);
-        add_filter('groups_admin_groups_add_form_after_fields', 'Castor_User::add_group');
-        add_filter('groups_admin_groups_edit_form_after_fields', 'Castor_User::edit_group');
+        add_action('edit_user_profile', [__CLASS__, 'edit_profile'], 1);
+        add_action('show_user_profile', [__CLASS__, 'edit_profile'], 1);
+        add_action('user_new_form', [__CLASS__, 'edit_profile'], 1);
+        add_filter('wp_is_application_passwords_available_for_user', [__CLASS__, 'application_passwords'], 10, 2);
+        add_action('user_profile_update_errors', [__CLASS__, 'profile_update']);
+        add_filter('groups_admin_groups_add_form_after_fields', [__CLASS__, 'add_group']);
+        add_filter('groups_admin_groups_edit_form_after_fields', [__CLASS__, 'edit_group']);
     }
 
     public static function login($user_login, $user) {
@@ -41,6 +49,10 @@ class Castor_User {
     public static function logout($user_id)
     {
         setcookie('wp_nbb_login', '', time() - 3600, '/', 'les-castors.fr', true);
+    }
+
+    public static function sanitize_username($username) {
+        return str_replace([' ', ',', '@'], '_', $username);
     }
 
     public static function edit_profile($user) {
@@ -100,13 +112,13 @@ class Castor_User {
 
     public static function account_menu_items($items) {
         return [
-            'dashboard'       => __( "Tableau de bord", 'castors' ),
-            'edit-account'    => __( "Mes infos", 'castors' ),
-            'mon-adhesion'    => __( "Mon adhésion", 'castors' ),
-            'edit-address'    => __( "Mes adresses", 'castors' ),
-            'orders'          => __( "Mes commandes", 'castors' ),
-            'downloads'       => __( "Mes téléchargements", 'castors' ),
-            'customer-logout' => __( "Quitter", 'castors' ),
+            'dashboard'       => __("Tableau de bord", 'castors'),
+            'edit-account'    => __("Mes infos", 'castors'),
+            'mon-adhesion'    => __("Mon adhésion", 'castors'),
+            'edit-address'    => __("Mes adresses", 'castors'),
+            'orders'          => __("Mes commandes", 'castors'),
+            'downloads'       => __("Mes téléchargements", 'castors'),
+            'customer-logout' => __("Quitter", 'castors'),
         ];
     }
 
@@ -122,36 +134,29 @@ class Castor_User {
         return $user->has_cap('administrator');
     }
 
-    public static function profile_update($errors, $update, $user) {
-        static::save_account_details($errors, $user);
+    public static function profile_update(&$errors) {
+        static::save_account_details($errors);
+    }
 
-        if ($errors->get_error_messages()) {
-            return;
+    public static function save_account_details(&$errors) {
+        $location = !empty($_POST['location-details']) ? wc_clean(wp_unslash($_POST['location-details'])) : '';
+        if (!$location) {
+            $errors->add('castors_location_invalid', __("La localisation n'est pas valide, merci d'entrer un code postal pour sélectionner la ville.", 'castors'));
         }
+    }
 
+    public static function profile_saved($id) {
+        $user = get_user_by('id', $id);
+        $location = !empty($_POST['location-details']) ? wc_clean(wp_unslash($_POST['location-details'])) : '';
+        update_user_meta($user->ID, 'castors_location_details', $location);
+        
         $current_user = wp_get_current_user();
         if ($current_user->ID !== $user->ID) {
             $member_num = !empty($_POST['member_num']) ? wc_clean(wp_unslash($_POST['member_num'])) : '';
             update_user_meta($user->ID, 'castors_member_num', $member_num);
         }
-    }
 
-    public static function save_account_details($errors, $user) {
-        $location = !empty($_POST['location-details']) ? wc_clean(wp_unslash($_POST['location-details'])) : '';
-        if (!$location) {
-            $errors->add('castors_location_invalid', __("La localisation n'est pas valide, merci d'entrer un code postal pour sélectionner la ville.", 'castors'));
-        }
-
-        if ($errors->get_error_messages()) {
-            return;
-        }
-
-        update_user_meta($user->ID, 'castors_location_details', $location);
-    }
-
-    public static function user_updated($id) {
-        $user = get_user_by('id', $id);
-        Castor_NodeBB::updateAccount($user);
+        Castor_NodeBB::updateAccount($user, $location);
         Castor_NodeBB::updateGroups($user);
     }
 
