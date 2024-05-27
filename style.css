@@ -9,12 +9,6 @@ Text Domain: castors
 Domain Path: /languages
 */
 
-iconify-icon {
-    display: inline-block;
-    width: 1em;
-    height: 1em;
-}
-
 .beware {
     color: red !important;
     font-weight: bold;
@@ -44,10 +38,100 @@ iconify-icon {
 }
 
 #castors-map {
-    height: 750px;
-    width: 750px;
+    flex-grow: 1;
+    height: 100%;
+    width: 100%;
 }
 
 #castors-map a {
     text-decoration: none;
+}
+
+#castors-map .leaflet-marker-icon {
+    background: transparent;
+    border: 0;
+    padding: 5px;
+}
+
+#castors-map .leaflet-marker-icon svg {
+    filter: drop-shadow(0 0 2px white);
+}
+
+#castors-map .marker-cluster div {
+    color: #222;
+    font-weight: bold;
+    margin: 0;
+}
+
+#castors-map .marker-cluster-small {
+    background-color: rgba(181, 226, 140, 0.6);
+}
+
+#castors-map .marker-cluster-small div {
+    background-color: rgba(110, 204, 57, 0.8);
+}
+
+#castors-map .marker-cluster-medium {
+    background-color: rgba(241, 211, 87, 0.6);
+}
+
+#castors-map .marker-cluster-medium div {
+    background-color: rgba(240, 194, 12, 0.8);
+}
+
+#castors-map .marker-cluster-large {
+    background-color: rgba(253, 156, 115, 0.6);
+}
+
+#castors-map .marker-cluster-large div {
+    background-color: rgba(241, 128, 23, 0.8);
+}
+
+#castors-map-layers {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 20px;
+}
+
+#castors-map-layers .castors-map-layer {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+#castors-map-layers .castors-map-layer-check i {
+    font-size: 1.6rem;
+}
+
+#castors-map-layers .castors-map-layer-check .fa-square {
+    color: grey;
+    display: block;
+}
+
+#castors-map-layers .castors-map-layer-check .fa-square-check {
+    display: none;
+}
+
+#castors-map-layers .castors-map-layer-check.checked .fa-square {
+    display: none;
+}
+
+#castors-map-layers .castors-map-layer-check.checked .fa-square-check {
+    display: block;
+}
+
+#castors-map-layers .castors-map-layer-name {
+    margin: 0;
+}
+
+@media only screen and (max-width: 976px) {
+    #castors-map-layers {
+        gap: 10px;
+    }
 }

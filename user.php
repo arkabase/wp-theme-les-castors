@@ -127,7 +127,7 @@ class Castor_User {
     }
 
     public static function locationAutocompleteScript() {
-        wp_enqueue_script('castors-location', CASTORS_THEME_URI . 'js/location.js', ['jquery-ui-autocomplete'], false, ['strategy' =>'defer', 'in_footer' => true]);
+        wp_enqueue_script('castors-location', CASTORS_THEME_URI . 'js/location.min.js', ['jquery-ui-autocomplete'], false, ['strategy' =>'defer', 'in_footer' => true]);
     }
 
     public static function application_passwords($available, $user) {
