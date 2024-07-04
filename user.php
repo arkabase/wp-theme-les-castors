@@ -1,24 +1,26 @@
 <?php
 if (!defined('ABSPATH') || !defined('CASTORS_THEME_VERSION'))  exit;
 
-require_once('nodebb.php');
-
-require_once('external/php-jwt/src/JWT.php');
-use Firebase\JWT\JWT;
-
-class Castor_User {
+class Castors_User {
     public static function activate() {
+    }
+
+    public static function deactivate() {
+        flush_rewrite_rules();
     }
 
     public static function enqueue_scripts() {
     }
 
     public static function init() {
-        add_action('wp_login', [__CLASS__, 'login'], 10, 2);
-        add_action('wp_logout', [__CLASS__, 'logout']);
+        add_filter('auth_cookie_expiration', [__CLASS__, 'cookie_expiration']);
 
-        add_rewrite_endpoint('mon-adhesion', EP_PAGES);
-        add_action('woocommerce_account_mon-adhesion_endpoint', [__CLASS__, 'account_adhesion_endpoint']);
+        add_rewrite_endpoint('adhesion', EP_PAGES);
+        add_rewrite_endpoint('chantiers', EP_PERMALINK | EP_PAGES);
+        add_action('woocommerce_account_membership_endpoint', [__CLASS__, 'account_membership_endpoint']);
+        add_action('woocommerce_account_worksites_endpoint', [__CLASS__, 'account_worksites_endpoint']);
+        add_filter('woocommerce_get_query_vars', [__CLASS__, 'query_vars'], 99);
+
         add_filter('woocommerce_account_menu_items', [__CLASS__, 'account_menu_items'], 40);
         add_filter('woocommerce_registration_redirect', [__CLASS__, 'registration_redirect']);
         add_action('woocommerce_edit_account_form_fields', [__CLASS__, 'edit_account']);
@@ -34,21 +36,16 @@ class Castor_User {
         add_action('user_new_form', [__CLASS__, 'edit_profile'], 1);
         add_filter('wp_is_application_passwords_available_for_user', [__CLASS__, 'application_passwords'], 10, 2);
         add_action('user_profile_update_errors', [__CLASS__, 'profile_update']);
-        add_filter('groups_admin_groups_add_form_after_fields', [__CLASS__, 'add_group']);
-        add_filter('groups_admin_groups_edit_form_after_fields', [__CLASS__, 'edit_group']);
     }
 
-    public static function login($user_login, $user) {
-        $expiration = time() + 14 * DAY_IN_SECONDS;
-        $payload = ['id' => $user->ID, 'username' => $user->user_login];
-        $secret = get_option('castors_nbb_secret');
-        $jwt = JWT::encode($payload, $secret, 'HS256');
-        setcookie('wp_nbb_login', $jwt, $expiration, '/', 'les-castors.fr', true, true);
+    public static function query_vars($vars) {
+        $vars['membership'] = 'adhesion';
+        $vars['worksites'] = 'chantiers';
+        return $vars;
     }
 
-    public static function logout($user_id)
-    {
-        setcookie('wp_nbb_login', '', time() - 3600, '/', 'les-castors.fr', true);
+    public static function cookie_expiration($length) {
+        return 30 * DAY_IN_SECONDS;
     }
 
     public static function sanitize_username($username) {
@@ -111,19 +108,40 @@ class Castor_User {
     }
 
     public static function account_menu_items($items) {
-        return [
+        $new_items = [
             'dashboard'       => __("Tableau de bord", 'castors'),
             'edit-account'    => __("Mes infos", 'castors'),
-            'mon-adhesion'    => __("Mon adhésion", 'castors'),
-            'edit-address'    => __("Mes adresses", 'castors'),
+            'membership'      => __("Mon adhésion", 'castors'),
             'orders'          => __("Mes commandes", 'castors'),
             'downloads'       => __("Mes téléchargements", 'castors'),
+            'edit-address'    => __("Mes adresses", 'castors'),
             'customer-logout' => __("Quitter", 'castors'),
         ];
+
+        if (current_user_can('edit_worksites')) {
+            Castors_Helper::array_insert_after_key($new_items, 'membership', [
+                'worksites' => __("Mes chantiers", 'castors'),
+            ]);
+        }
+
+        $other_items = [];
+        foreach ($items as $key => $label) {
+            if (!array_key_exists($key, $new_items)) {
+                $other_items[$key] = $label;
+            }
+        }
+        if (count($other_items) > 0) {
+            Castors_Helper::array_insert_after_key($new_items, 'edit-address', $other_items);
+        }
+        return $new_items;
     }
 
-    public static function account_adhesion_endpoint() {
-        wc_get_template('myaccount/mon-adhesion.php', array('user' => get_user_by('id', get_current_user_id())));
+    public static function account_membership_endpoint() {
+        wc_get_template('myaccount/membership.php');
+    }
+
+    public static function account_worksites_endpoint() {
+        wc_get_template('myaccount/worksites.php');
     }
 
     public static function locationAutocompleteScript() {
@@ -149,28 +167,11 @@ class Castor_User {
         $user = get_user_by('id', $id);
         $location = !empty($_POST['location-details']) ? wc_clean(wp_unslash($_POST['location-details'])) : '';
         update_user_meta($user->ID, 'castors_location_details', $location);
-        
+
         $current_user = wp_get_current_user();
         if ($current_user->ID !== $user->ID) {
             $member_num = !empty($_POST['member_num']) ? wc_clean(wp_unslash($_POST['member_num'])) : '';
             update_user_meta($user->ID, 'castors_member_num', $member_num);
         }
-
-        Castor_NodeBB::updateAccount($user, $location);
-        Castor_NodeBB::updateGroups($user);
-    }
-
-    public static function add_group($output) {
-        $output .= '<p class="description beware">';
-        $output .= esc_html__("ATTENTION : pensez à créer un groupe avec le même nom sur le forum NodeBB avant d'ajouter des membres aun nouveau groupe.", 'castors');
-        $output .= '</p>';
-        return $output;
-    }
-
-    public static function edit_group($output) {
-        $output .= '<p class="description beware">';
-        $output .= esc_html__("ATTENTION : Si un groupe avec le même nom existe sur le forum NodeBB, pensez à le mettre à jour également.", 'castors');
-        $output .= '</p>';
-        return $output;
     }
 }

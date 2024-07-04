@@ -130,6 +130,28 @@ Domain Path: /languages
     margin: 0;
 }
 
+.woocommerce_options_panel .inventory_sold_onetime,
+.woocommerce_options_panel .inventory_sold_notalone {
+    display: flex;
+}
+
+.woocommerce_options_panel fieldset.form-field._sold_onetime_field,
+.woocommerce_options_panel p.form-field._sold_onetime_field,
+.woocommerce_options_panel fieldset.form-field._sold_notalone_field,
+.woocommerce_options_panel p.form-field._sold_notalone_field {
+    padding-right: 0 !important;
+}
+
+.woocommerce_options_panel .inventory_sold_onetime .woocommerce-help-tip,
+.woocommerce_options_panel .inventory_sold_notalone .woocommerce-help-tip {
+    align-self: center;
+}
+
+.woocommerce .widget_shopping_cart .cart_list li,
+.woocommerce.widget_shopping_cart .cart_list li {
+    padding: 1.2em 2em 1.2em 5em;
+}
+
 @media only screen and (max-width: 976px) {
     #castors-map-layers {
         gap: 10px;

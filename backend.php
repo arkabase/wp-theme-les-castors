@@ -1,77 +1,91 @@
 <?php
 if (!defined('ABSPATH') || !defined('CASTORS_THEME_VERSION'))  exit;
 
-class Castor_Backend {
+class Castors_Backend {
     public static function activate() {
+    }
+
+    public static function deactivate() {
     }
 
     public static function enqueue_scripts() {
     }
 
     public static function init() {
-        add_action('wp_nav_menu_item_custom_fields', [__CLASS__, 'menu_item_fields'], 5, 2);
-        add_action('wp_update_nav_menu_item', [__CLASS__, 'menu_item_update'], 10, 2);
-
-        add_settings_section(
-            'castors-nbb-section',
-            __("Authentification sur le forum NodeBB", 'castors'),
-            [__CLASS__, 'section_desc'],
-            'general'
-        );
-    
-        add_settings_field(
-            'castors_nbb_secret',
-            __("JWT Secret", 'castors'),
-            [__CLASS__, 'secret'],
-            'general',
-            'castors-nbb-section',
-            [ 'label_for' => 'castors_nbb_secret' ]
-        );
-    
-        add_settings_field(
-            'castors_nbb_api_token',
-            __("Jeton API", 'castors'),
-            [__CLASS__, 'api_token'],
-            'general',
-            'castors-nbb-section',
-            [ 'label_for' => 'castors_nbb_api_token' ]
-        );
-    
-        register_setting('general', 'castors_nbb_secret');
-        register_setting('general', 'castors_nbb_api_token');
+        add_filter('woocommerce_product_data_tabs', [__CLASS__, 'product_data_tabs'], 99);
+        add_filter('groups_access_meta_boxes_groups_after_read_groups', [__CLASS__, 'after_read_groups'], 99, 2);
+        add_filter('groups_access_meta_boxes_after_groups_read_update', [__CLASS__, 'after_groups_read_update'], 99);
+        add_action('woocommerce_product_options_related', [__CLASS__, 'product_options_related']);
+        add_action('woocommerce_product_options_inventory_product_data', [__CLASS__, 'product_options_inventory']);
+        add_action('woocommerce_admin_process_product_object', [__CLASS__, 'process_product_object']);
     }
 
-    function section_desc($args) {
-        echo '<p>' . __("<b>JWT Secret</b> doit être le même que celui enregistré dans le plugin <b>Session Sharing</b> du forum.", 'castors') . '</p>'
-        . '<p>' . __("<b>Jeton API</b> doit être déclaré dans la section <b>Gestion API</b> de l'administration du forum, associé à un compte administrateur.", 'castors') . '</p>';
-    }
-    
-    function secret() {
-        echo '<input id="castors_nbb_secret" type="text" name="castors_nbb_secret" value="' . get_option('castors_nbb_secret') . '" class="regular-text">';
-    }
-    
-    function api_token() {
-        echo '<input id="castors_nbb_api_token" type="text" name="castors_nbb_api_token" value="' . get_option('castors_nbb_api_token') . '" class="regular-text">';
+    public static function product_data_tabs($tabs) {
+        unset($tabs['tisdk-suggestions']);
+        return $tabs;
     }
 
-    public static function menu_item_fields($item_id, $menu_item) {
-        $label = __("Capacité", 'castors');
-        $description = esc_html("Seuls les utilisateurs ayant cette capacité verront cet élément de menu. Laisser vide pour l'afficher à tous les utilisateurs", 'castors');
-
-        echo <<<EOF
-            <p class="field-capability description description-wide">
-                <label for="edit-menu-item-capability-{$item_id}">
-                    {$label}<br />
-                    <input type="text" id="edit-menu-item-capability-{$item_id}" class="widefat edit-menu-item-capability" name="menu-item-capability[{$item_id}]" value="{$menu_item->menu_item_capability}" />
-                    <span class="description">{$description}</span>
-                </label>
-            </p>
-        EOF;
+    public static function after_read_groups($content, $object) {
+        if (Groups_Access_Meta_Boxes::user_can_restrict()) {
+            $checked = checked($object->castors_groups_read_visitors, 1, false);
+            $label = __("Visible par les visiteurs", 'castors');
+            $description = __("Sera affiché aux utilisateurs non connectés en plus des groupes sélectionnés. Si coché avec aucun groupe sélectionné, l'affichage sera limité aux seuls visiteurs.", 'castors');
+            $content .= <<<EOF
+                <div class="castors-groups-metabox-visitors">
+                    <input type="checkbox" id="castors-groups-read-visitors" name="castors-groups-read-visitors" value="true" {$checked} />
+                    <label for="castors-groups-read-visitors">{$label}</label>
+                    <p class="description">{$description}</p>
+                </div>
+            EOF;
+        }
+        return $content;
     }
 
-    public static function menu_item_update($menu_id, $item_id) {
-        if ($_POST['menu-item-capability']) {
-            update_post_meta($item_id, 'menu-item-capability', $_POST['menu-item-capability'][$item_id] ?? '');
+    public static function after_groups_read_update($post_id) {
+        if (isset($_POST['castors-groups-read-visitors'])) {
+            update_post_meta($post_id, 'castors_groups_read_visitors', 1);
+        } else {
+            delete_post_meta($post_id, 'castors_groups_read_visitors');
+        }
+    }
+
+    public static function product_options_related() {
+        global $post;
+
+        include __DIR__ . '/views/html-product-data-linked-products.php';
+    }
+
+    public static function product_options_inventory() {
+        global $post;
+
+        include __DIR__ . '/views/html-product-data-inventory.php';
+    }
+
+    public static function process_product_object($product) {
+        $forced_ids = isset($_POST['castors_forced_ids']) ? array_map('intval', (array) wp_unslash($_POST['castors_forced_ids'])) : [];
+        $stored = get_post_meta($product->id, 'castors_forced_product');
+
+        foreach ($forced_ids as $id) {
+            if (!in_array($id, $stored)) {
+                add_post_meta($product->id, 'castors_forced_product', $id);
+            }
+        }
+        foreach ($stored as $id) {
+            if (!in_array($id, $forced_ids)) {
+                delete_post_meta($product->id, 'castors_forced_product', $id);
+            }
+        }
+
+        if (isset($_POST['castors_sold_onetime'])) {
+            update_post_meta($product->id, 'castors_sold_onetime', 1);
+        } else {
+            delete_post_meta($product->id, 'castors_sold_onetime');
+        }
+
+        if (isset($_POST['castors_sold_notalone'])) {
+            update_post_meta($product->id, 'castors_sold_notalone', 1);
+        } else {
+            delete_post_meta($product->id, 'castors_sold_notalone');
         }
     }
 }

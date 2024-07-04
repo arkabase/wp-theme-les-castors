@@ -1,13 +1,19 @@
 <?php
 if (!defined('ABSPATH') || !defined('CASTORS_THEME_VERSION'))  exit;
 
-class Castor_Map {
+class Castors_Map {
     public static function activate() {
-        get_role('administrator')->add_cap('castors_map_access');
         get_role('administrator')->add_cap('castors_map_show_members');
         get_role('administrator')->add_cap('castors_map_show_worksites');
         get_role('administrator')->add_cap('castors_map_show_experts');
         get_role('administrator')->add_cap('castors_map_show_meetings');
+    }
+
+    public static function deactivate() {
+        get_role('administrator')->remove_cap('castors_map_show_members');
+        get_role('administrator')->remove_cap('castors_map_show_worksites');
+        get_role('administrator')->remove_cap('castors_map_show_experts');
+        get_role('administrator')->remove_cap('castors_map_show_meetings');
     }
 
     public static function enqueue_scripts() {
@@ -20,7 +26,7 @@ class Castor_Map {
             wp_enqueue_style('leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
             wp_enqueue_style('leaflet-markercluster', 'https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css');
             wp_enqueue_style('leaflet-markercluster-default', 'https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css');
-            
+
             $user = wp_get_current_user();
             $config = [
                 'root' => esc_url_raw(rest_url()),
@@ -29,11 +35,14 @@ class Castor_Map {
                 'zoom' => 13,
             ];
 
-            $location_details = $user->castors_location_details;
-            if ($location_details) {
-                $location = json_decode(htmlspecialchars_decode($location_details));
-                $config['center'] = array_reverse($location->coordinates);
-            }
+            try {
+                $location_details = $user->castors_location_details;
+                if ($location_details) {
+                    $location = json_decode(htmlspecialchars_decode($location_details));
+                    $config['center'] = array_reverse($location->coordinates);
+                }
+            } catch(Exception $e) {}
+
             wp_localize_script('castors-map', 'castorsMapApiSettings', $config);
         }
     }
@@ -41,6 +50,7 @@ class Castor_Map {
     public static function init() {
         add_action('rest_api_init', [__CLASS__, 'add_api_routes']);
         static::addShortcodes();
+
         //static::activate(); // Uncomment this line if activate method has been modified, then recomment after init
     }
 
@@ -139,24 +149,27 @@ class Castor_Map {
     }
 
     public static function map_layer_member_geojson($user) {
-        $location_details = $user->castors_location_details;
-        $location = json_decode(htmlspecialchars_decode($location_details));
-        if ($location) {
-            return [
-                'type' => 'Feature',
-                'properties' => [
-                    'type' => 'member',
-                    'id' => $user->ID,
-                    'username' => $user->user_login,
-                    'fullname' => $user->display_name,
-                    'location' => $location->value,
-                ],
-                'geometry' => [
-                    'type' => 'Point',
-                    'coordinates' => $location->coordinates,
-                ]
-            ];
-        }
+        try {
+            $location_details = $user->castors_location_details;
+            $location = json_decode(htmlspecialchars_decode($location_details));
+            if ($location) {
+                return [
+                    'type' => 'Feature',
+                    'properties' => [
+                        'type' => 'member',
+                        'id' => $user->ID,
+                        'username' => $user->user_login,
+                        'fullname' => $user->display_name,
+                        'location' => $location->value,
+                    ],
+                    'geometry' => [
+                        'type' => 'Point',
+                        'coordinates' => $location->coordinates,
+                    ]
+                ];
+            }
+        } catch(Exception $e) {}
+
         return null;
     }
 
