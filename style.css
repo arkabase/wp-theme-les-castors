@@ -9,17 +9,15 @@ Text Domain: castors
 Domain Path: /languages
 */
 
-iconify-icon {
-    display: inline-block;
-    width: 1em;
-    height: 1em;
-}
-
 .beware {
     color: red !important;
     font-weight: bold;
     margin-top: 2em !important;
     margin-bottom: 2em !important;
+}
+
+.text-bold {
+    font-weight: bold;
 }
 
 .ui-widget {
@@ -30,6 +28,11 @@ iconify-icon {
 .main-navigation .menu-item > .menu-link i._mi {
     color: var(--ast-global-color-0);
     margin-top: 0;
+}
+
+.entry-meta {
+    color: var(--ast-global-color-3) !important;
+    font-weight: 600 !important;
 }
 
 #ast-hf-mobile-menu .menu-item > .menu-link i._mi {
@@ -43,11 +46,184 @@ iconify-icon {
     font-size: 12px !important;
 }
 
+.ast-badge-tax {
+    display: inline-block;
+    margin-bottom: 4px;
+    white-space: nowrap;
+}
+
 #castors-map {
-    height: 750px;
-    width: 750px;
+    flex-grow: 1;
+    height: 100%;
+    width: 100%;
 }
 
 #castors-map a {
     text-decoration: none;
+}
+
+#castors-map .leaflet-marker-icon {
+    background: transparent;
+    border: 0;
+    padding: 5px;
+}
+
+#castors-map .leaflet-marker-icon svg {
+    filter: drop-shadow(0 0 2px white);
+}
+
+#castors-map .marker-cluster div {
+    color: #222;
+    font-weight: bold;
+    margin: 0;
+}
+
+#castors-map .marker-cluster-small {
+    background-color: rgba(181, 226, 140, 0.6);
+}
+
+#castors-map .marker-cluster-small div {
+    background-color: rgba(110, 204, 57, 0.8);
+}
+
+#castors-map .marker-cluster-medium {
+    background-color: rgba(241, 211, 87, 0.6);
+}
+
+#castors-map .marker-cluster-medium div {
+    background-color: rgba(240, 194, 12, 0.8);
+}
+
+#castors-map .marker-cluster-large {
+    background-color: rgba(253, 156, 115, 0.6);
+}
+
+#castors-map .marker-cluster-large div {
+    background-color: rgba(241, 128, 23, 0.8);
+}
+
+#castors-map-layers {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 20px;
+}
+
+#castors-map-layers .castors-map-layer {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+#castors-map-layers .castors-map-layer-check i {
+    font-size: 1.6rem;
+}
+
+#castors-map-layers .castors-map-layer-check .fa-square {
+    color: grey;
+    display: block;
+}
+
+#castors-map-layers .castors-map-layer-check .fa-square-check {
+    display: none;
+}
+
+#castors-map-layers .castors-map-layer-check.checked .fa-square {
+    display: none;
+}
+
+#castors-map-layers .castors-map-layer-check.checked .fa-square-check {
+    display: block;
+}
+
+#castors-map-layers .castors-map-layer-name {
+    margin: 0;
+}
+
+.woocommerce_options_panel .inventory_sold_onetime,
+.woocommerce_options_panel .inventory_sold_notalone {
+    display: flex;
+}
+
+.woocommerce_options_panel fieldset.form-field._sold_onetime_field,
+.woocommerce_options_panel p.form-field._sold_onetime_field,
+.woocommerce_options_panel fieldset.form-field._sold_notalone_field,
+.woocommerce_options_panel p.form-field._sold_notalone_field {
+    padding-right: 0 !important;
+}
+
+.woocommerce_options_panel .inventory_sold_onetime .woocommerce-help-tip,
+.woocommerce_options_panel .inventory_sold_notalone .woocommerce-help-tip {
+    align-self: center;
+}
+
+.woocommerce .widget_shopping_cart .cart_list li,
+.woocommerce.widget_shopping_cart .cart_list li {
+    padding: 1.2em 2em 1.2em 5em;
+}
+
+#groups-panel-groups-expired .selectize-dropdown {
+    top: auto !important;
+    bottom: 42px !important;
+}
+
+.castors-location-nomap {
+    padding-top: 34px !important;
+}
+
+@media only screen and (max-width: 976px) {
+    #castors-map-layers {
+        gap: 10px;
+    }
+}
+
+@media only screen and (max-width: 921px) {
+    .woocommerce .woocommerce-MyAccount-navigation {
+        margin-bottom: 1em;
+    }
+
+    .woocommerce .woocommerce-MyAccount-navigation > ul {
+        padding-left: 0;
+    }
+}
+
+@media only screen and (max-width: 544px) {
+    .woocommerce form .form-row-first,
+    .woocommerce form .form-row-last,
+    .woocommerce-page form .form-row-first,
+    .woocommerce-page form .form-row-last {
+        width: 100%;
+        float: none;
+    }
+
+    .castors-location-nomap {
+        padding-top: 0 !important;
+    }
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    background: #fff;
+    color: #50575e;
+    clear: none;
+    cursor: pointer;
+    display: inline-block;
+    line-height: 0;
+    height: 1rem;
+    margin: -0.25rem 0.25rem 0 0;
+    outline: 0;
+    padding: 0 !important;
+    text-align: center;
+    vertical-align: middle;
+    width: 1rem;
+    min-width: 1rem;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+    transition: 0.05s border-color ease-in-out;
 }

@@ -1,6 +1,8 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
+$user = get_current_user();
+
 do_action('castors_before_edit_membership_form'); ?>
 
 <form class="castors-EditMembershipForm edit-membership" action="" method="post" <?php do_action('castors_edit_membership_form_tag'); ?> >
@@ -22,7 +24,5 @@ do_action('castors_before_edit_membership_form'); ?>
 
 	<?php do_action( 'castors_edit_membership_form_end' ); ?>
 </form>
-
-<?php Castor_User::locationAutocompleteScript('.castors-EditMembershipForm #location', '.castors-EditMembershipForm #location-details'); ?>
 
 <?php do_action( 'castors_after_edit_membership_form' ); ?>
